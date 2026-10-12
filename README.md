@@ -5,7 +5,7 @@ A tray applet for Linux Mint / Cinnamon (X11) that takes screenshots and records
 - **Screenshots** are saved as PNGs to `~/Pictures/Screenshots` and copied to the clipboard.
 - **Recordings** are saved as MP4 (H.264) to `~/Videos/Screencasts`, with optional system audio and/or microphone.
 - **Area selection** freezes the screen. Drag to select, press Enter for the full screen, or press Esc (or right-click) to cancel.
-- **Options** (in the tray menu) cover the capture delay (0/3/5/10 s), 15/30/60 fps, the cursor and audio sources. Settings are saved to `~/.config/screencap/config.json`.
+- **Options** (in the tray menu) cover the capture delay (0/3/5/10 s), 15/30/60 fps, the cursor, audio sources, and whether the recording timer appears in the panel. Settings are saved to `~/.config/screencap/config.json`.
 
 ## Requirements
 `python3-gi`, `gir1.2-xapp-1.0`, `ffmpeg`, `pulseaudio-utils`/`pipewire-pulse` (all preinstalled on Mint).

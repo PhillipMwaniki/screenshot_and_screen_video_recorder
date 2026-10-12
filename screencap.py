@@ -40,6 +40,7 @@ DEFAULTS = {
     "microphone": False,
     "copy_to_clipboard": True,
     "show_cursor": True,
+    "show_timer": True,
 }
 
 
@@ -356,11 +357,11 @@ class ScreenCapApp(Gtk.Application):
             menu.append(mi)
             return mi
 
-        def check(label, key):
+        def check(label, key, live=False):
             mi = Gtk.CheckMenuItem.new_with_mnemonic(label)
             mi.set_active(self.cfg[key])
             mi.connect("toggled", lambda w: self._set(key, w.get_active()))
-            mi.set_sensitive(not recording)
+            mi.set_sensitive(live or not recording)
             menu.append(mi)
 
         if recording:
@@ -383,6 +384,7 @@ class ScreenCapApp(Gtk.Application):
         check("Record _system audio", "system_audio")
         check("Record _microphone", "microphone")
         check("Show _cursor in recordings", "show_cursor")
+        check("Show recording _timer in panel", "show_timer", live=True)
         check("Copy screenshots to _clipboard", "copy_to_clipboard")
         menu.append(Gtk.SeparatorMenuItem())
         group = None
@@ -421,6 +423,8 @@ class ScreenCapApp(Gtk.Application):
     def _set(self, key, value):
         self.cfg[key] = value
         save_config(self.cfg)
+        if key == "show_timer" and self.recorder.active:
+            self.icon.set_label(self.recorder.elapsed() if value else "")
 
     def _open(self, path):
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -514,7 +518,7 @@ class ScreenCapApp(Gtk.Application):
             return
         self.recorder.start(rect)
         self.icon.set_icon_name(self.rec_icon)
-        self.icon.set_label("00:00")
+        self.icon.set_label("00:00" if self.cfg["show_timer"] else "")
         self.icon.set_tooltip_text("Recording — click to stop")
         self.tick_id = GLib.timeout_add_seconds(1, self._tick)
         self._rebuild_menu()
@@ -522,7 +526,8 @@ class ScreenCapApp(Gtk.Application):
     def _tick(self):
         if not self.recorder.active:
             return False
-        self.icon.set_label(self.recorder.elapsed())
+        if self.cfg["show_timer"]:
+            self.icon.set_label(self.recorder.elapsed())
         self.stop_item.set_label(f"Stop recording ({self.recorder.elapsed()})")
         return True
 
