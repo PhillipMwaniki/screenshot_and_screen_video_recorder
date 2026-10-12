@@ -29,7 +29,7 @@ remove_hotkeys() {
       new+=("'$id'")
     fi
   done
-  dconf write "$KB/custom-list" "[$(IFS=,; echo "${new[*]}")]"
+  dconf write "$KB/custom-list" "@as [$(IFS=,; echo "${new[*]}")]"
 }
 
 if [[ "${1:-}" == "--uninstall" ]]; then

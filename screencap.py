@@ -72,6 +72,22 @@ def notify(summary, body="", icon="camera-photo"):
         print(f"{summary}: {body}")
 
 
+def read_hotkeys():
+    """Map command-line flag -> accelerator string from Cinnamon's custom keybindings."""
+    found = {}
+    source = Gio.SettingsSchemaSource.get_default()
+    if not source or not source.lookup("org.cinnamon.desktop.keybindings", True):
+        return found
+    for kb_id in Gio.Settings.new("org.cinnamon.desktop.keybindings").get_strv("custom-list"):
+        kb = Gio.Settings.new_with_path(
+            "org.cinnamon.desktop.keybindings.custom-keybinding",
+            f"/org/cinnamon/desktop/keybindings/custom-keybindings/{kb_id}/")
+        cmd, bindings = kb.get_string("command"), kb.get_strv("binding")
+        if "screencap.py" in cmd and bindings and bindings[0]:
+            found[cmd.split()[-1].lstrip("-")] = bindings[0]
+    return found
+
+
 def timestamp():
     return time.strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -283,6 +299,7 @@ class ScreenCapApp(Gtk.Application):
         self.icon = None
         self.tick_id = 0
         self.busy = False  # an area selection / countdown is in progress
+        self.rec_action = None  # hotkey flag of the current recording, shown on "Stop"
         for flag, desc in [
             ("screenshot-full", "Take a full-screen screenshot"),
             ("screenshot-area", "Select an area and take a screenshot"),
@@ -326,8 +343,14 @@ class ScreenCapApp(Gtk.Application):
         menu = Gtk.Menu()
         recording = self.recorder.active
 
-        def item(label, cb, sensitive=True):
+        hotkeys = read_hotkeys()
+
+        def item(label, cb, sensitive=True, action=None):
             mi = Gtk.MenuItem.new_with_mnemonic(label)
+            if action in hotkeys:
+                key, mods = Gtk.accelerator_parse(hotkeys[action])
+                if key:
+                    mi.get_child().set_accel(key, mods)  # display only; Cinnamon owns the binding
             mi.connect("activate", lambda *_: cb())
             mi.set_sensitive(sensitive)
             menu.append(mi)
@@ -341,13 +364,14 @@ class ScreenCapApp(Gtk.Application):
             menu.append(mi)
 
         if recording:
-            self.stop_item = item(f"_Stop recording ({self.recorder.elapsed()})", self.stop_recording)
+            self.stop_item = item(f"_Stop recording ({self.recorder.elapsed()})", self.stop_recording,
+                                  action=self.rec_action)
             menu.append(Gtk.SeparatorMenuItem())
-        item("Screenshot — _full screen", self.screenshot_full, not recording)
-        item("Screenshot — select _area", self.screenshot_area, not recording)
+        item("Screenshot — _full screen", self.screenshot_full, not recording, "screenshot-full")
+        item("Screenshot — select _area", self.screenshot_area, not recording, "screenshot-area")
         menu.append(Gtk.SeparatorMenuItem())
-        item("Record — f_ull screen", lambda: self.toggle_record(False), not recording)
-        item("Record — select a_rea", lambda: self.toggle_record(True), not recording)
+        item("Record — f_ull screen", lambda: self.toggle_record(False), not recording, "record-full")
+        item("Record — select a_rea", lambda: self.toggle_record(True), not recording, "record-area")
         menu.append(Gtk.SeparatorMenuItem())
 
         opts = Gtk.Menu()
@@ -472,6 +496,7 @@ class ScreenCapApp(Gtk.Application):
             return
         if self.busy:
             return
+        self.rec_action = "record-area" if area else "record-full"
         if area:
             self.busy = True
 
